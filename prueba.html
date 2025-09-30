@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Página de Prueba - Token</title>
+  <style>
+    body{font-family:Segoe UI, Tahoma, Geneva, Verdana, sans-serif;background:#f0f2f5;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px}
+    .card{background:white;padding:28px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.08);width:100%;max-width:520px;text-align:center}
+    h1{font-size:20px;margin-bottom:12px;color:#222}
+    .token-box{background:#f8f9fa;padding:12px;border-radius:8px;word-break:break-all;border:1px solid #e2e8f0;margin:8px 0}
+    .countdown{font-size:48px;font-weight:800;margin-top:10px;color:#28a745}
+    .btn{margin-top:16px;padding:10px 14px;border-radius:8px;border:none;background:#667eea;color:white;cursor:pointer}
+    .btn.danger{background:#dc3545}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>✅ Página de prueba — Token activo</h1>
+
+    <div style="margin-bottom:12px;">
+      <div><strong>Usuario:</strong></div>
+      <div class="token-box" id="userBox">—</div>
+    </div>
+
+    <div style="margin-bottom:12px;">
+      <div><strong>Token:</strong></div>
+      <div class="token-box" id="tokenBox">—</div>
+    </div>
+
+    <div>
+      <div><strong>Tiempo restante:</strong></div>
+      <div class="countdown" id="countdown">10s</div>
+    </div>
+
+    <div style="margin-top:18px;">
+      <button id="logoutBtn" class="btn danger">Cerrar sesión</button>
+    </div>
+  </div>
+
+  <script>
+    // Lee el usuario que guardó login.html; si no existe, retorna al login
+    const username = sessionStorage.getItem('username');
+    if (!username) {
+      // si llegó directo a prueba.html sin pasar por login, regresamos
+      window.location.href = 'login.html';
+    } else {
+      document.getElementById('userBox').textContent = username;
+      // Generar token AL CARGAR la página (aquí arranca el contador de 10s)
+      const token = btoa(username + '|' + Date.now() + '|' + Math.random().toString(36).slice(2));
+      document.getElementById('tokenBox').textContent = token;
+
+      // Guardamos token/expiración por si quieres consultarlo desde otras pestañas
+      const expiresAt = Date.now() + 10000; // 10s desde ahora
+      sessionStorage.setItem('token', token);
+      sessionStorage.setItem('expiresAt', expiresAt.toString());
+
+      // Cuenta regresiva visible en segundos
+      const countdownEl = document.getElementById('countdown');
+      let timeLeft = 10;
+      countdownEl.textContent = timeLeft + 's';
+      const timer = setInterval(() => {
+        timeLeft--;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          // limpiar sesión y regresar al login
+          alert('⚠️ Tu sesión expiró');
+          sessionStorage.removeItem('token');
+          sessionStorage.removeItem('expiresAt');
+          sessionStorage.removeItem('username');
+          window.location.href = 'login.html';
+        } else {
+          countdownEl.textContent = timeLeft + 's';
+          // cambiar color cuando falten pocos segundos
+          countdownEl.style.color = (timeLeft <= 3) ? '#dc3545' : '#28a745';
+        }
+      }, 1000);
+
+      // Cerrar sesión manual
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        clearInterval(timer);
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('expiresAt');
+        sessionStorage.removeItem('username');
+        window.location.href = 'login.html';
+      });
+    }
+  </script>
+</body>
+</html>

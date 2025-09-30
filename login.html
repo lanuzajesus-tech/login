@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Seguro</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; padding: 20px;
+        }
+        .container {
+            background: white; padding: 40px; border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.3);
+            width: 100%; max-width: 420px;
+        }
+        h2 { text-align: center; color: #333; margin-bottom: 30px; font-size: 28px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; color: #555; font-weight: 600; font-size: 14px; }
+        input[type="text"], input[type="password"] {
+            width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        input[type="text"]:focus, input[type="password"]:focus { outline: none; border-color: #667eea; }
+        .password-requirements { margin-top: 8px; padding: 10px; background: #f8f9fa; border-radius: 6px; font-size: 12px; }
+        .requirement { color: #dc3545; margin: 4px 0; }
+        .requirement.valid { color: #28a745; }
+        .requirement::before { content: "✗ "; font-weight: bold; }
+        .requirement.valid::before { content: "✓ "; }
+        .captcha-container { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; display:flex; align-items:center; gap:15px; }
+        .captcha-code {
+            background: white; padding: 15px 25px; border-radius:6px; font-size:24px; font-weight:bold; letter-spacing:8px;
+            font-family: 'Courier New', monospace; color:#667eea; text-decoration: line-through; user-select:none; flex:1; text-align:center;
+            border:2px dashed #667eea;
+        }
+        .refresh-btn { background: #667eea; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; font-size: 20px; transition: background 0.3s; }
+        .refresh-btn:hover { background: #5568d3; }
+        .captcha-input { margin-top: 10px; }
+        .error-message { color: #dc3545; font-size: 13px; margin-top: 8px; display: none; }
+        .error-message.show { display: block; }
+        .btn-login {
+            width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius:8px; font-size:16px; font-weight:600; cursor:pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .btn-login:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102,126,234,0.4); }
+        .logout-btn { margin-top: 10px; padding: 8px 16px; background: #dc3545; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; }
+        .logout-btn:hover { background: #c82333; }
+        .success-message { display: none; background: #d4edda; color: #155724; padding: 15px; border-radius: 8px; margin-top: 20px; border: 1px solid #c3e6cb; }
+        .success-message.show { display:block; }
+        .token-info { margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius:6px; font-size:12px; word-break: break-all; }
+        .session-info { margin-top: 20px; padding: 15px; background: #e7f3ff; border-radius:8px; display:none; }
+        .session-info.show { display:block; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>🔐 Login Seguro</h2>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Nombre de Usuario</label>
+                <input type="text" id="username" placeholder="Ingrese su usuario" required>
+                <div class="error-message" id="usernameError"></div>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input type="password" id="password" placeholder="8-12 caracteres" required>
+                <div class="password-requirements">
+                    <div class="requirement" id="reqLength">8-12 caracteres</div>
+                    <div class="requirement" id="reqLower">Al menos una minúscula</div>
+                    <div class="requirement" id="reqUpper">Al menos una mayúscula</div>
+                    <div class="requirement" id="reqNumber">Al menos un número</div>
+                </div>
+                <div class="error-message" id="passwordError"></div>
+            </div>
+
+            <div class="form-group">
+                <label>CAPTCHA de Verificación</label>
+                <div class="captcha-container">
+                    <div class="captcha-code" id="captchaCode"></div>
+                    <button type="button" class="refresh-btn" id="refreshCaptcha">↻</button>
+                </div>
+                <input type="text" id="captchaInput" class="captcha-input" placeholder="Ingrese el código CAPTCHA" required>
+                <div class="error-message" id="captchaError"></div>
+            </div>
+
+            <button type="submit" class="btn-login">Iniciar Sesión</button>
+        </form>
+
+        <div class="success-message" id="successMessage">
+            <strong>✓ Login exitoso!</strong>
+            <div class="token-info">
+                <strong>Token generado (visible en prueba):</strong><br>
+                <span id="tokenDisplay">—</span>
+                <br><br>
+                <strong>Expira en:</strong> <span id="expirationTime">—</span>
+            </div>
+        </div>
+
+        <div class="session-info" id="sessionInfo">
+            <h3 style="margin-bottom: 10px;">Sesión Activa</h3>
+            <p><strong>Usuario:</strong> <span id="sessionUser"></span></p>
+            <p><strong>Tiempo restante:</strong> <span id="timeRemaining"></span></p>
+            <button class="logout-btn" id="logoutBtn">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <script>
+        // Usuarios de ejemplo (igual que tu original)
+        const users = {
+            'admin': 'Admin123',
+            'usuario': 'Pass1234',
+            'test': 'Test9876'
+        };
+
+        // CAPTCHA (igual que tu original)
+        function generateCaptcha() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
+            let captcha = '';
+            for (let i = 0; i < 6; i++) captcha += chars.charAt(Math.floor(Math.random() * chars.length));
+            return captcha;
+        }
+
+        let currentCaptcha = generateCaptcha();
+        document.getElementById('captchaCode').textContent = currentCaptcha;
+
+        document.getElementById('refreshCaptcha').addEventListener('click', function() {
+            currentCaptcha = generateCaptcha();
+            document.getElementById('captchaCode').textContent = currentCaptcha;
+            document.getElementById('captchaInput').value = '';
+            hideError('captchaError');
+        });
+
+        // Validación en vivo (igual que tu original)
+        const passwordInput = document.getElementById('password');
+        passwordInput.addEventListener('input', function() {
+            const pwd = this.value;
+            document.getElementById('reqLength').classList.toggle('valid', pwd.length >= 8 && pwd.length <= 12);
+            document.getElementById('reqLower').classList.toggle('valid', /[a-z]/.test(pwd));
+            document.getElementById('reqUpper').classList.toggle('valid', /[A-Z]/.test(pwd));
+            document.getElementById('reqNumber').classList.toggle('valid', /[0-9]/.test(pwd));
+        });
+
+        function showError(elementId, message) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.textContent = message;
+            errorElement.classList.add('show');
+        }
+        function hideError(elementId) {
+            const errorElement = document.getElementById(elementId);
+            errorElement.classList.remove('show');
+        }
+        function validatePassword(password) {
+            return password.length >= 8 && password.length <= 12 &&
+                   /[a-z]/.test(password) && /[A-Z]/.test(password) && /[0-9]/.test(password);
+        }
+        function validateUsername(username) {
+            return /^[a-zA-Z0-9]+$/.test(username);
+        }
+
+        // Generar token (no lo guardamos aquí en expires, lo genera prueba.html)
+        function generateToken(username) {
+            const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+            const payload = btoa(JSON.stringify({ username: username, iat: Date.now() }));
+            const signature = btoa(Math.random().toString(36).substring(7));
+            return `${header}.${payload}.${signature}`;
+        }
+
+        // Logout local (si usaras UI local)
+        function logoutLocal() {
+            // limpiaría UI local, pero no se usa porque redirigimos a prueba.html
+            sessionStorage.clear();
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('successMessage').classList.remove('show');
+            document.getElementById('sessionInfo').classList.remove('show');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+            document.getElementById('captchaInput').value = '';
+            currentCaptcha = generateCaptcha();
+            document.getElementById('captchaCode').textContent = currentCaptcha;
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', logoutLocal);
+
+        // Manejo del formulario (igual que tu original)
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            hideError('usernameError');
+            hideError('passwordError');
+            hideError('captchaError');
+
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
+            const captchaInput = document.getElementById('captchaInput').value.trim();
+
+            let hasErrors = false;
+            if (!validateUsername(username)) {
+                showError('usernameError', 'El usuario solo puede contener letras y números');
+                hasErrors = true;
+            }
+            if (!validatePassword(password)) {
+                showError('passwordError', 'La contraseña no cumple los requisitos');
+                hasErrors = true;
+            }
+            if (captchaInput !== currentCaptcha) {
+                showError('captchaError', 'El código CAPTCHA es incorrecto');
+                hasErrors = true;
+            }
+            if (hasErrors) return;
+
+            // ✅ Aceptar cualquier usuario que cumpla validaciones y captcha
+if (validateUsername(username) && validatePassword(password) && captchaInput === currentCaptcha) {
+    // Guardar usuario y redirigir a prueba.html
+    sessionStorage.setItem('username', username);
+    window.location.href = 'prueba.html';
+} else {
+    showError('passwordError', 'Usuario o contraseña incorrectos');
+    // Generar nuevo CAPTCHA por seguridad
+    currentCaptcha = generateCaptcha();
+    document.getElementById('captchaCode').textContent = currentCaptcha;
+    document.getElementById('captchaInput').value = '';
+}
+
+        });
+    </script>
+</body>
+</html>
