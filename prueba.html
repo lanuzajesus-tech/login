@@ -43,7 +43,7 @@
     const username = sessionStorage.getItem('username');
     if (!username) {
       // si llegó directo a prueba.html sin pasar por login, regresamos
-      window.location.href = 'login.html';
+      window.location.href = 'index.html';
     } else {
       document.getElementById('userBox').textContent = username;
       // Generar token AL CARGAR la página (aquí arranca el contador de 10s)
@@ -68,7 +68,7 @@
           sessionStorage.removeItem('token');
           sessionStorage.removeItem('expiresAt');
           sessionStorage.removeItem('username');
-          window.location.href = 'login.html';
+          window.location.href = 'index.html';
         } else {
           countdownEl.textContent = timeLeft + 's';
           // cambiar color cuando falten pocos segundos
@@ -82,7 +82,7 @@
         sessionStorage.removeItem('token');
         sessionStorage.removeItem('expiresAt');
         sessionStorage.removeItem('username');
-        window.location.href = 'login.html';
+        window.location.href = 'index.html';
       });
     }
   </script>
